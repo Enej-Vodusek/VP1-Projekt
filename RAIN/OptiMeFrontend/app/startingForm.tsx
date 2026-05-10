@@ -30,7 +30,7 @@ export default function startingForm() {
         body: JSON.stringify({
           username,
           education,
-          employment,
+          employment
         }),
       });
 
@@ -66,6 +66,7 @@ export default function startingForm() {
         value={education}
         onChangeText={setEducation}
       />
+
 
       <TextInput
         style={styles.input}
