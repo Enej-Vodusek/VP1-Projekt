@@ -3,13 +3,13 @@ import { Platform, StyleSheet } from "react-native";
 export const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F3FCFF",
   },
 
   card: {
     flex: 1,
     width: "100%",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F3FCFF",
     flexDirection: "row",
   },
 

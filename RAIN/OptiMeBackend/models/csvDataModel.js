@@ -17,4 +17,4 @@ const CsvDataSchema = new Schema({
     stress_level: { type: Number, required: false }
 });
 
-module.exports = mongoose.model('cvsData', CsvDataSchema);
+module.exports = mongoose.model('csvData', CsvDataSchema);

@@ -3,8 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
+  StyleSheet,
   Image,
   useWindowDimensions,
+  Alert,
   Platform,
 } from "react-native";
 import { router } from "expo-router";
@@ -32,33 +34,15 @@ export default function LoginScreen() {
     web: require("@/assets/images/logo_final_web.svg"),
   });
 
-  const logoStyle = isMobile ? styles.mobileLogo : styles.webLogo;
+  const logoStyle = Platform.select({
+    ios: styles.mobileLogo,
+    android: styles.mobileLogo,
+    web: styles.webLogo,
+  });
 
   async function handleLogin() {
-    if (loading) return;
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    if (!cleanEmail) {
-      showToast("Email is required", "error");
-      return;
-    }
-
-    if (!cleanEmail.includes("@")) {
-      showToast("Invalid email format", "error");
-      return;
-    }
-
-    if (!password) {
-      showToast("Password is required", "error");
-      return;
-    }
-
     try {
-      setLoading(true);
-
-      const data = await loginUser(cleanEmail, password);
-
+      const data = await loginUser(email, password);
       console.log("Login Success", data);
 
       showToast(data.message || "Logged in successfully", "success");
@@ -113,15 +97,11 @@ export default function LoginScreen() {
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <AuthButton
-            title={loading ? "Logging in..." : "Login"}
-            onPress={handleLogin}
-          />
+          <AuthButton title="Login" onPress={handleLogin} />
 
           <View style={styles.signupRow}>
             <Text style={styles.signupText}>Don’t have an account? </Text>
-
-            <TouchableOpacity onPress={() => router.push("/auth/register")}>
+            <TouchableOpacity>
               <Text style={styles.signupLink}>Sign up</Text>
             </TouchableOpacity>
           </View>
