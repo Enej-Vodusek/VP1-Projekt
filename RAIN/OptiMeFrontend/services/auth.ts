@@ -32,10 +32,11 @@ export async function loginUser(email: string, password: string) {
 }
 
 export async function registerUser(
+  username: string,
   email: string,
-  password: string,
+  date_of_birth: Date,
   gender: string,
-  dateOfBirth: string,
+  password: string,
 ) {
   const body = {
     email,
@@ -50,13 +51,12 @@ export async function registerUser(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "application/json",
     },
     credentials: "include",
     body: JSON.stringify(body),
   });
 
-  const text = await response.text();
+  const data = await res.json();
 
   let data;
 
