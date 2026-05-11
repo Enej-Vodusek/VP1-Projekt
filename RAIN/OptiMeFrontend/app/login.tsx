@@ -3,13 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
+  StyleSheet,
   Image,
   useWindowDimensions,
+  Alert,
   Platform,
 } from "react-native";
-import { router } from "expo-router";
-import { useToast } from "@/context/ToastContext";
-
 import { loginUser } from "@/services/auth";
 import AuthInput from "@/components/AuthInput";
 import AuthButton from "@/components/AuthButton";
@@ -18,8 +17,6 @@ import { styles } from "@/styles/login.styles";
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { showToast } = useToast();
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -30,42 +27,20 @@ export default function LoginScreen() {
     web: require("@/assets/images/logo_final_web.svg"),
   });
 
-  const logoStyle = isMobile ? styles.mobileLogo : styles.webLogo;
+  const logoStyle = Platform.select({
+    ios: styles.mobileLogo,
+    android: styles.mobileLogo,
+    web: styles.webLogo,
+  });
 
   async function handleLogin() {
-    if (loading) return;
-
-    const cleanEmail = email.trim().toLowerCase();
-
-    if (!cleanEmail) {
-      showToast("Email is required", "error");
-      return;
-    }
-
-    if (!cleanEmail.includes("@")) {
-      showToast("Invalid email format", "error");
-      return;
-    }
-
-    if (!password) {
-      showToast("Password is required", "error");
-      return;
-    }
-
     try {
-      setLoading(true);
-
-      const data = await loginUser(cleanEmail, password);
-
+      const data = await loginUser(email, password);
       console.log("Login Success", data);
-      showToast(data.message || "Logged in successfully", "success");
-
-      router.replace("/user/startingForm");
+      Alert.alert("Success", "Logged in!");
     } catch (error: any) {
       console.log("Login failed", error);
-      showToast(error?.message || "Login failed", "error");
-    } finally {
-      setLoading(false);
+      Alert.alert("Error", error?.message || "Login failed");
     }
   }
 
@@ -103,15 +78,11 @@ export default function LoginScreen() {
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
 
-          <AuthButton
-            title={loading ? "Logging in..." : "Login"}
-            onPress={handleLogin}
-          />
+          <AuthButton title="Login" onPress={handleLogin} />
 
           <View style={styles.signupRow}>
             <Text style={styles.signupText}>Don’t have an account? </Text>
-
-            <TouchableOpacity onPress={() => router.push("/auth/register")}>
+            <TouchableOpacity>
               <Text style={styles.signupLink}>Sign up</Text>
             </TouchableOpacity>
           </View>
