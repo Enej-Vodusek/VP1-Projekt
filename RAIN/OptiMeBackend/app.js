@@ -22,6 +22,7 @@ app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
+app.use("/api", require("./routes/scrapeRoutes")); //sends to userRoutes if /user
 app.use("/user", require("./routes/userRoutes")); //sends to userRoutes if /user
 
 module.exports = app;
