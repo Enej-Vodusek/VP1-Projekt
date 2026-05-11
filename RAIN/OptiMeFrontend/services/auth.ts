@@ -1,4 +1,4 @@
-import { API_URL } from "./api";
+import { API_URL } from "@/services/api";
 
 export async function loginUser(email: string, password: string) {
   const response = await fetch(`${API_URL}/user/login`, {
@@ -11,10 +11,21 @@ export async function loginUser(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 
-  const data = await response.json();
+  const text = await response.text();
+
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.log("LOGIN RAW RESPONSE:", text);
+    throw new Error("Server returned invalid response");
+  }
+
+  console.log("LOGIN RESPONSE:", data);
 
   if (!response.ok) {
-    throw new Error(data.message || "Login failed");
+    throw new Error(data.error || data.message || "Login failed");
   }
 
   return data;
@@ -27,18 +38,39 @@ export async function registerUser(
   gender: string,
   password: string,
 ) {
-  const res = await fetch(`${API_URL}/api/register`, {
+  const body = {
+    email,
+    password,
+    gender,
+    dateOfBirth,
+  };
+
+  console.log("REGISTER REQUEST BODY:", body);
+
+  const response = await fetch(`${API_URL}/user/register`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ username, email, date_of_birth, gender, password }),
+    credentials: "include",
+    body: JSON.stringify(body),
   });
 
   const data = await res.json();
 
-  if (!res.ok) {
-    throw new Error(data.message || "Register failed");
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch {
+    console.log("REGISTER RAW RESPONSE:", text);
+    throw new Error("Server returned invalid response");
+  }
+
+  console.log("REGISTER RESPONSE:", data);
+
+  if (!response.ok) {
+    throw new Error(data.error || data.message || "Register failed");
   }
 
   return data;
