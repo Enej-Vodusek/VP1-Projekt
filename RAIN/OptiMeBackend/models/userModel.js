@@ -23,6 +23,7 @@ const UserSchema = new Schema({
   },
 
   formFinished: { type: Boolean, default: false },
+  twoFactorEnabled: { type: Boolean, default: false },
 });
 
 UserSchema.pre("save", async function (next) {

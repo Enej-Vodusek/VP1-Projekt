@@ -12,6 +12,7 @@ export type AuthUserResponse = {
   email?: string;
   username?: string;
   formFinished: boolean;
+  twoFactorEnabled?: boolean;
 };
 
 type AuthResponse = {
@@ -28,6 +29,7 @@ function normalizeUser(user: any): AuthUserResponse | null {
     email: user.email,
     username: user.username,
     formFinished: user.formFinished === true,
+    twoFactorEnabled: user.twoFactorEnabled === true,
   };
 }
 

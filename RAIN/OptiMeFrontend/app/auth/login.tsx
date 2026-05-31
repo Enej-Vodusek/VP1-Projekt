@@ -70,6 +70,11 @@ export default function LoginScreen() {
 
       setUser(data.user);
 
+      if (data.user.twoFactorEnabled) {
+        router.replace("/2fa");
+        return;
+      }
+
       if (data.user.formFinished === true) {
         router.replace("/(tabs)/home");
       } else {

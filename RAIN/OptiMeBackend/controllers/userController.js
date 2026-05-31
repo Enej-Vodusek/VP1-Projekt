@@ -149,6 +149,7 @@ exports.login = async function (req, res) {
         phoneScreenTime: user.phoneScreenTime,
         stress: user.stress,
         formFinished: user.formFinished,
+        twoFactorEnabled: user.twoFactorEnabled, //tukaj sem dodal 2fa
       },
     });
   } catch (err) {
@@ -350,3 +351,63 @@ exports.userProfile = async function (req, res) {
     });
   }
 }
+
+
+
+// TWO-FACTOR-AUTHENTICATION
+
+const multer = require("multer");
+const { exec } = require("child_process");
+const path = require("path");
+
+const upload = multer({ dest: "uploads/" });
+
+exports.verify2FA = [
+  upload.single("image"),
+  async function (req, res) {
+    try {
+      const userId = req.user?.userId || req.user?.id;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image uploaded",
+        });
+      }
+
+      const imagePath = path.resolve(req.file.path);
+
+      exec(
+        `python3 ../ORV/Model/predict_image.py ${imagePath}`,
+        async (err, stdout, stderr) => {
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: "Python execution failed",
+              error: stderr || err.message,
+            });
+          }
+
+          const result = stdout.trim(); 
+          const verified = result === "true";
+
+          // OPTIONAL: če želiš, lahko shraniš stanje userja
+          await User.findByIdAndUpdate(userId, {
+            twoFactorEnabled: verified,
+          });
+
+          return res.json({
+            success: true,
+            verified,
+          });
+        }
+      );
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: "2FA verification failed",
+        error: err.message,
+      });
+    }
+  },
+];
