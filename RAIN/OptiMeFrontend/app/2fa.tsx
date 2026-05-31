@@ -2,6 +2,10 @@ import React, { useState } from "react";
 import { View, Button, Image, Text } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 
+import axios from "axios";
+import { getAccessToken } from "@/services/authStorage";
+import { router } from "expo-router";
+
 console.log("ARRIVED AT BEGINNING")
 export default function TwoFA() {
   console.log("SCREEN MOUNTED");
@@ -22,26 +26,52 @@ export default function TwoFA() {
 
   console.log("ARRIVED AT SUBMIT")
   const submit = async () => {
-    if (!image) {
-      alert("Please select an image first");
-      return;
-    }
+    if (!image) return;
+
+    const token = await getAccessToken();
 
     const formData = new FormData();
+    formData.append("image", image.file, "2fa.jpg");
 
-    formData.append("image", {
-      uri: image.uri,
-      name: "2fa.jpg",
-      type: "image/jpeg",
-    } as any);
+    try {
+      const response = await axios.post(
+        "http://192.168.1.72:3000/user/2fa",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-    const response = await fetch("http://192.168.1.72:3000/user/2fa", {
-      method: "POST",
-      body: formData,
-    });
+      const data = response.data;
 
-    const data = await response.json();
-    setResult(data.verified ? "OK" : "FAILED");
+      console.log("2FA RESULT:", data);
+
+      if (data.verified) {
+        setResult("OK");
+
+        setTimeout(() => {
+          router.replace("/(tabs)/home");
+        }, 500);
+
+      } else {
+        setResult("FAILED");
+
+        setTimeout(() => {
+          router.replace("/auth/login");
+        }, 800);
+      }
+
+    } catch (err: any) {
+      console.log("2FA ERROR:", err?.response?.data || err.message);
+
+      setResult("ERROR");
+
+      setTimeout(() => {
+        router.replace("/auth/login");
+      }, 1000);
+    }
   };
 
   return (

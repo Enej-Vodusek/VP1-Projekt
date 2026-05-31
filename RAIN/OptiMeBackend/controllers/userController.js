@@ -362,10 +362,13 @@ const path = require("path");
 
 const upload = multer({ dest: "uploads/" });
 
+exports.upload2FA = upload.single("image");
+
 exports.verify2FA = [
-  upload.single("image"),
   async function (req, res) {
+    console.log("REQ FILE:", req.file);
     try {
+
       const userId = req.user?.userId || req.user?.id;
 
       if (!req.file) {
@@ -375,11 +378,20 @@ exports.verify2FA = [
         });
       }
 
+      const scriptPath = path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
       const imagePath = path.resolve(req.file.path);
 
+      console.log("SCRIPT:", scriptPath);
+      console.log("IMAGE:", imagePath);
+
       exec(
-        `python3 ../ORV/Model/predict_image.py ${imagePath}`,
+        `python "${scriptPath}" "${imagePath}"`,
         async (err, stdout, stderr) => {
+
+          console.log("STDOUT:", stdout);
+          console.log("STDERR:", stderr);
+          console.log("ERR:", err);
+
           if (err) {
             return res.status(500).json({
               success: false,
@@ -388,8 +400,8 @@ exports.verify2FA = [
             });
           }
 
-          const result = stdout.trim(); 
-          const verified = result === "true";
+          const result = JSON.parse(stdout.trim());
+          const verified = result.success && result.accepted;
 
           // OPTIONAL: če želiš, lahko shraniš stanje userja
           await User.findByIdAndUpdate(userId, {
