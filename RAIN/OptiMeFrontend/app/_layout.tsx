@@ -14,6 +14,10 @@ function AuthGuard() {
 
   const [isReady, setIsReady] = useState(false);
 
+  console.log("SEGMENTS:", segments);
+  console.log("USER:", user);
+  console.log("2FA:", user?.twoFactorEnabled);
+
   useEffect(() => {
     setIsReady(true);
   }, []);
@@ -27,7 +31,15 @@ function AuthGuard() {
     const isUserRoute = firstSegment === "user";
     const isTabsRoute = firstSegment === "(tabs)";
 
+    const needs2FA = user?.twoFactorEnabled === true;
+    const currentRoute = segments.join("/");
+
     const hasFinishedForm = user?.formFinished === true;
+
+    if (isAuthenticated && needs2FA && !currentRoute.includes("2fa")) {
+      router.replace("/2fa");
+      return;
+    }
 
     if (!isAuthenticated && !isAuthRoute) {
       router.replace("/auth/login");
@@ -78,6 +90,14 @@ function AuthGuard() {
         options={{
           animation: Platform.OS === "web" ? "fade" : "fade_from_bottom",
           animationDuration: 250,
+        }}
+      />
+
+      <Stack.Screen
+        name="2fa"
+        options={{
+          animation: Platform.OS === "web" ? "fade" : "slide_from_right",
+          animationDuration: 300,
         }}
       />
     </Stack>

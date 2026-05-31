@@ -69,8 +69,11 @@ export default function LoginScreen() {
       }
 
       setUser(data.user);
+      
+      console.log("LOGIN RESPONSE USER:", data.user);
 
       if (data.user.twoFactorEnabled) {
+        console.log("NAVIGATING TO 2FA");
         router.replace("/2fa");
         return;
       }

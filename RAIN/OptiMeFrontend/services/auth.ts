@@ -135,3 +135,13 @@ export async function getCurrentUser() {
     throw new Error(getErrorMessage(error, "Failed to get current user"));
   }
 }
+
+export async function toggleTwoFactor() {
+  try {
+    const response = await api.post("/user/toggle-2fa");
+
+    return response.data;
+  } catch (error: any) {
+    throw new Error(getErrorMessage(error, "Toggle 2FA failed"));
+  }
+}

@@ -14,5 +14,6 @@ router.post("/logout", controller.logout);
 router.get('/profile', authMiddleware, controller.userProfile);
 
 router.post("/2fa", authMiddleware, controller.verify2FA); //Za Two-Factor-Authentication
+router.post("/toggle-2fa", authMiddleware, controller.toggle2FA);
 
 module.exports = router;

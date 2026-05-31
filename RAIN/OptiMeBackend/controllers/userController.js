@@ -411,3 +411,32 @@ exports.verify2FA = [
     }
   },
 ];
+
+exports.toggle2FA = async function (req, res) {
+  try {
+    const userId = req.user.userId || req.user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.twoFactorEnabled = !user.twoFactorEnabled;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      twoFactorEnabled: user.twoFactorEnabled,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to toggle 2FA",
+    });
+  }
+};
