@@ -33,6 +33,13 @@ export const mainNavigationItems: NavigationItem[] = [
     activePath: "/profile",
     icon: "person-outline",
   },
+
+  {
+    label: "UserSnapshot",
+    href: "/(tabs)/snapshotForm",
+    activePath: "/snapshotForm",
+    icon: "list-outline",
+  },
 ];
 
 export const sidebarBottomNavigationItems: NavigationItem[] = [

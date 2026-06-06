@@ -710,3 +710,85 @@ exports.trendsData = async function (req, res) {
     });
   }
 };
+
+exports.submitUserSnapshot = async function (req, res) {
+  try {
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: "User with your ID not found",
+      });
+    }
+
+    const {
+      date,
+      sleepHours,
+      screenTimeHours,
+      mood,
+      stress,
+      anxiety,
+    } = req.body;
+
+    const missingFields = [];
+
+    if (sleepHours === undefined) missingFields.push("sleepHours");
+    if (screenTimeHours === undefined)
+      missingFields.push("screenTimeHours");
+    if (mood === undefined) missingFields.push("mood");
+    if (stress === undefined) missingFields.push("stress");
+    if (anxiety === undefined) missingFields.push("anxiety");
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing required snapshot data",
+        missingFields,
+      });
+    }
+
+    const snapshotDate = date ? new Date(date) : new Date();
+
+    snapshotDate.setHours(0, 0, 0, 0)
+
+    await SnapshotModel.updateOne(
+      {
+        userId: req.user.userId,
+        date: snapshotDate,
+      },
+      {
+        $set: {
+          date: snapshotDate,
+          sleepHours: Number(sleepHours),
+          screenTimeHours: Number(screenTimeHours),
+          mood: Number(mood),
+          stress: Number(stress),
+          anxiety: Number(anxiety),
+        },
+      },
+      {
+        upsert: true,
+      }
+    );
+
+    const snapshot = await SnapshotModel.findOne({
+      userId: req.user.userId,
+      date: snapshotDate,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Snapshot saved successfully",
+      snapshot,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Snapshot saving failed",
+    });
+  } 
+};

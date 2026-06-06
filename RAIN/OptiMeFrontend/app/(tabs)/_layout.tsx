@@ -32,6 +32,7 @@ export default function TabsLayout() {
             <Stack.Screen name="care" />
             <Stack.Screen name="profile" />
             <Stack.Screen name="settings" />
+            <Stack.Screen name="snapshot" />
           </Stack>
         </View>
       </View>
@@ -55,6 +56,7 @@ export default function TabsLayout() {
         <Stack.Screen name="care" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="settings" />
+        <Stack.Screen name="snapshot" />
       </Stack>
 
       <MobileBottomNav />
