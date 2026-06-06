@@ -135,6 +135,7 @@ exports.login = async function (req, res) {
       accessToken,
       refreshToken,
       success: true,
+      requires2FA: user.twoFactorEnabled,
       message: "User login successful",
       user: {
         id: user._id,

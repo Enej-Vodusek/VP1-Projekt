@@ -19,6 +19,7 @@ type AuthResponse = {
   accessToken?: string;
   user?: AuthUserResponse;
   message?: string;
+  requires2FA?: boolean;
 };
 
 function normalizeUser(user: any): AuthUserResponse | null {
@@ -62,7 +63,7 @@ export async function loginUser(email: string, password: string) {
       throw new Error("Access token missing from login response");
     }
 
-    await saveAccessToken(accessToken);
+    //await saveAccessToken(accessToken); // PAZI TUKAJ!
 
     return normalizeAuthResponse(response.data);
   } catch (error: any) {

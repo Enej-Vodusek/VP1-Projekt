@@ -17,12 +17,14 @@ import AuthInput from "@/components/AuthInput";
 import AuthButton from "@/components/AuthButton";
 import { styles } from "@/styles/login.styles";
 
+import { saveAccessToken } from "@/services/authStorage";
+
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
-  const { user, setUser, authLoading } = useAuth();
+  const { user, setUser, setPendingToken, setPendingUser, authLoading } = useAuth();
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -68,15 +70,31 @@ export default function LoginScreen() {
         throw new Error("User data missing from login response");
       }
 
+      //setUser(data.user);
+      if (data.user?.twoFactorEnabled) {
+        setPendingUser(data.user);
+
+        if (data.accessToken) {
+          setPendingToken(data.accessToken);
+        }
+
+        router.replace("/2fa");
+        return;
+      }
+
+      if (data.accessToken) {
+        await saveAccessToken(data.accessToken);
+      }
+
       setUser(data.user);
       
       console.log("LOGIN RESPONSE USER:", data.user);
 
-      if (data.user.twoFactorEnabled) {
+      /*if (data.user.twoFactorEnabled) {
         console.log("NAVIGATING TO 2FA");
         router.replace("/2fa");
         return;
-      }
+      }*/
 
       if (data.user.formFinished === true) {
         router.replace("/(tabs)/home");

@@ -7,7 +7,7 @@ import { ToastProvider } from "@/context/ToastContext";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 function AuthGuard() {
-  const { isAuthenticated, user, authLoading } = useAuth();
+  const { isAuthenticated, user, pendingUser, authLoading } = useAuth();
 
   const segments = useSegments();
   const router = useRouter();
@@ -30,18 +30,16 @@ function AuthGuard() {
     const isAuthRoute = firstSegment === "auth";
     const isUserRoute = firstSegment === "user";
     const isTabsRoute = firstSegment === "(tabs)";
-
-    const needs2FA = user?.twoFactorEnabled === true;
-    const currentRoute = segments.join("/");
+    const is2FARoute = firstSegment === "2fa";
 
     const hasFinishedForm = user?.formFinished === true;
 
-    if (isAuthenticated && needs2FA && !currentRoute.includes("2fa")) {
+    if (pendingUser && !is2FARoute) {
       router.replace("/2fa");
       return;
     }
 
-    if (!isAuthenticated && !isAuthRoute) {
+    if (!isAuthenticated && !pendingUser && !isAuthRoute) {
       router.replace("/auth/login");
       return;
     }
@@ -60,6 +58,26 @@ function AuthGuard() {
       router.replace("/user/startingForm");
       return;
     }
+
+    /*if (!isAuthenticated && !isAuthRoute) {
+      router.replace("/auth/login");
+      return;
+    }
+
+    if (isAuthenticated && isAuthRoute) {
+      router.replace(hasFinishedForm ? "/(tabs)/home" : "/user/startingForm");
+      return;
+    }
+
+    if (isAuthenticated && isUserRoute && hasFinishedForm) {
+      router.replace("/(tabs)/home");
+      return;
+    }
+
+    if (isAuthenticated && isTabsRoute && !hasFinishedForm) {
+      router.replace("/user/startingForm");
+      return;
+    }*/
   }, [isReady, authLoading, isAuthenticated, user, segments, router]);
 
   return (
