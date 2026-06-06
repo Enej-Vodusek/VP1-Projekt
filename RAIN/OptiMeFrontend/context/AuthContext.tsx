@@ -8,6 +8,7 @@ export type AuthUser = {
   email?: string;
   username?: string;
   formFinished: boolean;
+  twoFactorEnabled?: boolean;
 };
 
 type AuthContextType = {
@@ -16,6 +17,12 @@ type AuthContextType = {
   authLoading: boolean;
   setUser: (user: AuthUser | null) => void;
   logout: () => Promise<void>;
+
+  pendingUser: AuthUser | null;
+  pendingToken: string | null;
+
+  setPendingUser: (user: AuthUser | null) => void;
+  setPendingToken: (token: string | null) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -28,12 +35,18 @@ function normalizeAuthUser(user: AuthUser | null): AuthUser | null {
     email: user.email,
     username: user.username,
     formFinished: user.formFinished === true,
+    twoFactorEnabled: user.twoFactorEnabled,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+
+  const [pendingUser, setPendingUserState] =
+  useState<AuthUser | null>(null);
+  const [pendingToken, setPendingTokenState] =
+  useState<string | null>(null);
 
   function setUser(nextUser: AuthUser | null) {
     setUserState(normalizeAuthUser(nextUser));
@@ -71,6 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authLoading,
         setUser,
         logout,
+        pendingUser,
+        pendingToken,
+        setPendingUser: setPendingUserState,
+        setPendingToken: setPendingTokenState,
       }}
     >
       {children}
