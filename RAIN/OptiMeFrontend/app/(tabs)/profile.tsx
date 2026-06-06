@@ -15,6 +15,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { colors, styles } from "@/styles/home.styles";
 
+import { toggleTwoFactor } from "@/services/auth";
+
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const isWebLayout = width >= 1000;
@@ -32,21 +34,23 @@ export default function ProfileScreen() {
     activeElement?.blur();
   }
 
-  function handleToggleTwoFactor() {
+  async function handleToggleTwoFactor() {
     blurWebFocus();
 
-    setTwoFactorEnabled((currentValue) => {
-      const newValue = !currentValue;
+    try {
+      const res = await toggleTwoFactor();
+
+      setTwoFactorEnabled(res.twoFactorEnabled);
 
       showToast(
-        newValue
+        res.twoFactorEnabled
           ? "Two-factor authentication enabled."
           : "Two-factor authentication disabled.",
         "success",
       );
-
-      return newValue;
-    });
+    } catch (error) {
+      showToast("Failed to update 2FA", "error");
+    }
   }
 
   async function logoutConfirmed() {
