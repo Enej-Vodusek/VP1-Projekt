@@ -80,8 +80,31 @@ echo ""
 echo "HOST_IP = $HOST_IP"
 echo ""
 
-echo "Gradim in zaganjam containerje ..."
-docker compose up --build -d \
+if [[ "${CLEAN:-0}" == "1" ]]; then
+  echo "CLEAN=1 nastavljen. Brišem stare containerje, image in volume ..."
+  docker compose down --volumes --remove-orphans --rmi local || true
+
+  echo ""
+  echo "Gradim sveže image brez cache-a ..."
+  docker compose build --no-cache \
+    model \
+    backend \
+    mqtt-processor
+else
+  echo "Normalni zagon. Uporabljam Docker cache ..."
+  docker compose down --remove-orphans || true
+
+  echo ""
+  echo "Gradim samo spremembe ..."
+  docker compose build \
+    model \
+    backend \
+    mqtt-processor
+fi
+
+echo ""
+echo "Zaganjam containerje ..."
+docker compose up -d \
   mosquitto \
   model \
   backend \

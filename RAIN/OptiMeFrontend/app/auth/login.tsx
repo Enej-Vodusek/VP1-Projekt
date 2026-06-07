@@ -24,7 +24,8 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
-  const { user, setUser, setPendingToken, setPendingUser, authLoading } = useAuth();
+  const { user, setUser, setPendingToken, setPendingUser, authLoading } =
+    useAuth();
 
   const { width } = useWindowDimensions();
   const isMobile = width < 768;
@@ -62,39 +63,40 @@ export default function LoginScreen() {
 
       const data = await loginUser(cleanEmail, password);
 
-      console.log("Login Success", data);
-
-      showToast(data.message || "Logged in successfully", "success");
+      console.log("LOGIN RESPONSE:", data);
 
       if (!data.user) {
         throw new Error("User data missing from login response");
       }
 
-      //setUser(data.user);
-      if (data.user?.twoFactorEnabled) {
-        setPendingUser(data.user);
+      const accessToken = data.accessToken;
 
-        if (data.accessToken) {
-          setPendingToken(data.accessToken);
+      const requires2FA =
+        data.requires2FA === true || data.user?.twoFactorEnabled === true;
+
+      if (requires2FA) {
+        console.log("2FA REQUIRED - NAVIGATING TO /2fa");
+
+        if (!accessToken) {
+          throw new Error("2FA token missing from login response");
         }
 
+        setPendingUser(data.user);
+        setPendingToken(accessToken);
+
+        showToast("Enter your 2FA verification code", "success");
         router.replace("/2fa");
         return;
       }
 
-      if (data.accessToken) {
-        await saveAccessToken(data.accessToken);
+      if (!accessToken) {
+        throw new Error("Access token missing from login response");
       }
 
+      await saveAccessToken(accessToken);
       setUser(data.user);
-      
-      console.log("LOGIN RESPONSE USER:", data.user);
 
-      /*if (data.user.twoFactorEnabled) {
-        console.log("NAVIGATING TO 2FA");
-        router.replace("/2fa");
-        return;
-      }*/
+      showToast(data.message || "Logged in successfully", "success");
 
       if (data.user.formFinished === true) {
         router.replace("/(tabs)/home");

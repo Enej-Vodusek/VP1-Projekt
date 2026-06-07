@@ -340,93 +340,105 @@ exports.userProfile = async function (req, res) {
       gender,
       dateOfBirth,
       education,
-      employment
+      employment,
     });
-
-  }
-  catch(err)
-  {
+  } catch (err) {
     return res.status(500).json({
       success: false,
       message: "User profile data retrival failed",
     });
   }
-}
+};
 
-
-
+// TWO-FACTOR-AUTHENTICATION
 // TWO-FACTOR-AUTHENTICATION
 
 const multer = require("multer");
-const { exec } = require("child_process");
+const { execFile } = require("child_process");
 const path = require("path");
 
 const upload = multer({ dest: "uploads/" });
 
 exports.upload2FA = upload.single("image");
 
-exports.verify2FA = [
-  async function (req, res) {
+exports.verify2FA = async function (req, res) {
+  try {
+    console.log("REQ USER:", req.user);
     console.log("REQ FILE:", req.file);
-    try {
 
-      const userId = req.user?.userId || req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "No image uploaded",
-        });
-      }
-
-      const scriptPath = path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
-      //const scriptPath = process.env.PREDICT_SCRIPT || path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
-      const imagePath = path.resolve(req.file.path);
-      //const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
-
-      console.log("SCRIPT:", scriptPath);
-      console.log("IMAGE:", imagePath);
-
-      exec(
-        //`${PYTHON_BIN} "${scriptPath}" "${imagePath}"`,
-        `python "${scriptPath}" "${imagePath}"`,
-        async (err, stdout, stderr) => {
-
-          console.log("STDOUT:", stdout);
-          console.log("STDERR:", stderr);
-          console.log("ERR:", err);
-
-          if (err) {
-            return res.status(500).json({
-              success: false,
-              message: "Python execution failed",
-              error: stderr || err.message,
-            });
-          }
-
-          const result = JSON.parse(stdout.trim());
-          const verified = result.success && result.accepted;
-
-          // OPTIONAL: če želiš, lahko shraniš stanje userja
-          await User.findByIdAndUpdate(userId, {
-            twoFactorEnabled: verified,
-          });
-
-          return res.json({
-            success: true,
-            verified,
-          });
-        }
-      );
-    } catch (err) {
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "2FA verification failed",
-        error: err.message,
+        verified: false,
+        message: "Unauthorized - user id missing",
       });
     }
-  },
-];
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        message: "No image uploaded",
+      });
+    }
+
+    const scriptPath = process.env.PREDICT_SCRIPT || "/model/predict_image.py";
+    const pythonBin = process.env.PYTHON_BIN || "python3";
+    const imagePath = path.resolve(req.file.path);
+
+    console.log("PYTHON:", pythonBin);
+    console.log("SCRIPT:", scriptPath);
+    console.log("IMAGE:", imagePath);
+
+    execFile(
+      pythonBin,
+      [scriptPath, imagePath],
+      async function (err, stdout, stderr) {
+        console.log("STDOUT:", stdout);
+        console.log("STDERR:", stderr);
+        console.log("ERR:", err);
+
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            verified: false,
+            message: "Python execution failed",
+            error: stderr || err.message,
+          });
+        }
+
+        let result;
+
+        try {
+          result = JSON.parse(stdout.trim());
+        } catch (parseErr) {
+          return res.status(500).json({
+            success: false,
+            verified: false,
+            message: "Invalid Python response",
+            rawOutput: stdout,
+          });
+        }
+
+        const verified = result.success === true && result.accepted === true;
+
+        return res.json({
+          success: true,
+          verified,
+        });
+      },
+    );
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      verified: false,
+      message: "2FA verification failed",
+      error: err.message,
+    });
+  }
+};
 
 exports.toggle2FA = async function (req, res) {
   try {

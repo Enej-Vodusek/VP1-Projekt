@@ -43,13 +43,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<AuthUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  const [pendingUser, setPendingUserState] =
-  useState<AuthUser | null>(null);
-  const [pendingToken, setPendingTokenState] =
-  useState<string | null>(null);
+  const [pendingUser, setPendingUserState] = useState<AuthUser | null>(null);
+  const [pendingToken, setPendingTokenState] = useState<string | null>(null);
 
   function setUser(nextUser: AuthUser | null) {
     setUserState(normalizeAuthUser(nextUser));
+
+    if (nextUser) {
+      setPendingUserState(null);
+      setPendingTokenState(null);
+    }
   }
 
   useEffect(() => {
@@ -73,6 +76,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await logoutUser();
     } finally {
       setUserState(null);
+      setPendingUserState(null);
+      setPendingTokenState(null);
     }
   }
 
