@@ -7,5 +7,6 @@ router.get('/mentalHealthScore', authMiddleware, controller.mentalHealthData);
 router.get('/trackedMetrics', authMiddleware, controller.trackedMetricsData);
 router.get('/calculatedScores', authMiddleware, controller.calculatedScoresData);
 router.get('/trends', authMiddleware, controller.trendsData);
+router.post('/submitUserSnapshot', authMiddleware, controller.submitUserSnapshot);
 
 module.exports = router;
