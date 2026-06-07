@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  useWindowDimensions,
-  Platform,
-} from "react-native";
+import { View, Text, Image, useWindowDimensions, Platform } from "react-native";
 
 import { router } from "expo-router";
 
@@ -15,7 +9,7 @@ import AuthButton from "@/components/AuthButton";
 import { styles } from "@/styles/login.styles";
 import { useToast } from "@/context/ToastContext";
 
-import { sumbitUserSnapshotForm } from "@/services/user";
+import { submitUserSnapshotForm } from "@/services/user";
 
 export default function UserSnapshotFormScreen() {
   const [mood, setMood] = useState("");
@@ -41,21 +35,53 @@ export default function UserSnapshotFormScreen() {
   async function handleSubmit() {
     if (loading) return;
 
+    const moodValue = Number(mood);
+    const stressValue = Number(stress);
+    const anxietyValue = Number(anxiety);
+    const sleepHoursValue = Number(sleepHours);
+    const screenTimeHoursValue = Number(screenTimeHours);
+
+    if (
+      mood.trim() === "" ||
+      stress.trim() === "" ||
+      anxiety.trim() === "" ||
+      sleepHours.trim() === "" ||
+      screenTimeHours.trim() === ""
+    ) {
+      showToast("Please fill in all fields.", "error");
+      return;
+    }
+
+    if (
+      Number.isNaN(moodValue) ||
+      Number.isNaN(stressValue) ||
+      Number.isNaN(anxietyValue) ||
+      Number.isNaN(sleepHoursValue) ||
+      Number.isNaN(screenTimeHoursValue)
+    ) {
+      showToast("All values must be numbers.", "error");
+      return;
+    }
+
     try {
       setLoading(true);
 
-      const data = await sumbitUserSnapshotForm(Number(mood), Number(stress), Number(anxiety), Number(sleepHours), Number(screenTimeHours));
+      const data = await submitUserSnapshotForm({
+        mood: moodValue,
+        stress: stressValue,
+        anxiety: anxietyValue,
+        sleepHours: sleepHoursValue,
+        screenTimeHours: screenTimeHoursValue,
+        date: new Date().toISOString(),
+      });
 
       showToast(data?.message || "Snapshot saved", "success");
 
-      router.replace("/");
+      router.replace("/(tabs)/home");
     } catch (error: any) {
       console.log("Snapshot save failed", error);
 
-      showToast(
-        error?.message || "Failed to save snapshot",
-        "error"
-      );
+      showToast(error?.message || "Failed to save snapshot", "error");
     } finally {
       setLoading(false);
     }
