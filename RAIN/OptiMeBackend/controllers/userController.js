@@ -380,12 +380,15 @@ exports.verify2FA = [
       }
 
       const scriptPath = path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
+      //const scriptPath = process.env.PREDICT_SCRIPT || path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
       const imagePath = path.resolve(req.file.path);
+      //const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
 
       console.log("SCRIPT:", scriptPath);
       console.log("IMAGE:", imagePath);
 
       exec(
+        //`${PYTHON_BIN} "${scriptPath}" "${imagePath}"`,
         `python "${scriptPath}" "${imagePath}"`,
         async (err, stdout, stderr) => {
 

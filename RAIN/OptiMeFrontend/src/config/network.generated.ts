@@ -1,16 +1,16 @@
 // Auto-generated file.
 // Ne urejaj ročno. Za posodobitev zaženi: npm run detect-ip
 
-export const HOST_IP = "192.168.56.1";
+export const HOST_IP = "192.168.1.72";
 
-export const API_BASE_URL = "http://192.168.56.1:3000";
+export const API_BASE_URL = "http://192.168.1.72:3000";
 
-export const MQTT_HOST = "192.168.56.1";
+export const MQTT_HOST = "192.168.1.72";
 export const MQTT_PORT = 1883;
-export const MQTT_URL = "mqtt://192.168.56.1:1883";
+export const MQTT_URL = "mqtt://192.168.1.72:1883";
 
 export const MQTT_WS_PORT = 9001;
-export const MQTT_WS_URL = "ws://192.168.56.1:9001";
+export const MQTT_WS_URL = "ws://192.168.1.72:9001";
 
 export const NETWORK_CONFIG = {
   hostIp: HOST_IP,
