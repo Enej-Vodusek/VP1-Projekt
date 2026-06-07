@@ -1,12 +1,18 @@
 const User = require("../models/userModel");
 const Auth = require("../services/auth");
 
+const multer = require("multer");
+const { execFile } = require("child_process");
+const path = require("path");
+const fs = require("fs");
+
+const upload = multer({ dest: "uploads/" });
+
 // Register
 exports.register = async function (req, res) {
   try {
     const { email, password, gender, dateOfBirth } = req.body;
 
-    // Check required fields
     if (!email || !password || !gender || !dateOfBirth) {
       return res.status(400).json({
         success: false,
@@ -14,7 +20,6 @@ exports.register = async function (req, res) {
       });
     }
 
-    // Check email
     if (!email.includes("@")) {
       return res.status(400).json({
         success: false,
@@ -22,7 +27,6 @@ exports.register = async function (req, res) {
       });
     }
 
-    // Check password
     if (password.length < 6) {
       return res.status(400).json({
         success: false,
@@ -30,7 +34,6 @@ exports.register = async function (req, res) {
       });
     }
 
-    // Check duplicate email
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
@@ -40,7 +43,6 @@ exports.register = async function (req, res) {
       });
     }
 
-    // Check valid date
     const parsedDate = new Date(dateOfBirth);
 
     if (isNaN(parsedDate.getTime())) {
@@ -50,7 +52,6 @@ exports.register = async function (req, res) {
       });
     }
 
-    // Create user
     const user = new User({
       email,
       password,
@@ -81,7 +82,6 @@ exports.login = async function (req, res) {
   try {
     const { email, password } = req.body;
 
-    // Check required fields
     if (!email || !password) {
       return res.status(400).json({
         success: false,
@@ -89,7 +89,6 @@ exports.login = async function (req, res) {
       });
     }
 
-    // Check email format
     if (!email.includes("@")) {
       return res.status(400).json({
         success: false,
@@ -97,10 +96,8 @@ exports.login = async function (req, res) {
       });
     }
 
-    // Find user
     const user = await User.findOne({ email });
 
-    // DO NOT LEAK WHICH FIELD IS WRONG
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -108,7 +105,6 @@ exports.login = async function (req, res) {
       });
     }
 
-    // Check password
     const match = await user.comparePassword(password);
 
     if (!match) {
@@ -119,7 +115,6 @@ exports.login = async function (req, res) {
     }
 
     const accessToken = Auth.createAccessToken(user);
-
     const refreshToken = Auth.createRefreshToken(user);
 
     await Auth.storeRefreshToken(user, refreshToken);
@@ -135,7 +130,7 @@ exports.login = async function (req, res) {
       accessToken,
       refreshToken,
       success: true,
-      requires2FA: user.twoFactorEnabled,
+      requires2FA: user.twoFactorEnabled === true,
       message: "User login successful",
       user: {
         id: user._id,
@@ -150,7 +145,7 @@ exports.login = async function (req, res) {
         phoneScreenTime: user.phoneScreenTime,
         stress: user.stress,
         formFinished: user.formFinished,
-        twoFactorEnabled: user.twoFactorEnabled, //tukaj sem dodal 2fa
+        twoFactorEnabled: user.twoFactorEnabled === true,
       },
     });
   } catch (err) {
@@ -167,10 +162,10 @@ exports.logout = async function (req, res) {
     const refreshToken = req.cookies.refreshToken;
 
     if (refreshToken) {
-      await Auth.revokeRefreshToken(refreshToken); //from DB
+      await Auth.revokeRefreshToken(refreshToken);
     }
 
-    res.clearCookie("refreshToken"); //from local
+    res.clearCookie("refreshToken");
 
     return res.status(201).json({
       success: true,
@@ -179,7 +174,7 @@ exports.logout = async function (req, res) {
   } catch (err) {
     return res.status(500).json({
       success: false,
-      message: "logout Failed",
+      message: "Logout failed",
     });
   }
 };
@@ -249,17 +244,14 @@ exports.saveForm = async function (req, res) {
       user: {
         id: user._id,
         email: user.email,
-
         gender: user.gender,
         dateOfBirth: user.dateOfBirth,
-
         username: user.username,
         education: user.education,
         employment: user.employment,
-
         baseline: user.baseline,
-
         formFinished: user.formFinished,
+        twoFactorEnabled: user.twoFactorEnabled === true,
       },
     });
   } catch (err) {
@@ -269,6 +261,7 @@ exports.saveForm = async function (req, res) {
     });
   }
 };
+
 exports.me = async function (req, res) {
   try {
     const userId = req.user.userId || req.user.id;
@@ -304,6 +297,7 @@ exports.me = async function (req, res) {
         phoneScreenTime: user.phoneScreenTime,
         stress: user.stress,
         formFinished: user.formFinished,
+        twoFactorEnabled: user.twoFactorEnabled === true,
       },
     });
   } catch (err) {
@@ -327,106 +321,141 @@ exports.userProfile = async function (req, res) {
 
     const user = await User.findById(userId);
 
-    const username = user.username;
-    const gender = user.gender;
-    const dateOfBirth = user.dateOfBirth;
-    const education = user.education;
-    const employment = user.employment;
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
     return res.json({
       success: true,
       message: "User profile data retrieval successfull",
-      username,
-      gender,
-      dateOfBirth,
-      education,
-      employment
+      username: user.username,
+      gender: user.gender,
+      dateOfBirth: user.dateOfBirth,
+      education: user.education,
+      employment: user.employment,
+      twoFactorEnabled: user.twoFactorEnabled === true,
     });
-
-  }
-  catch(err)
-  {
+  } catch (err) {
     return res.status(500).json({
       success: false,
       message: "User profile data retrival failed",
     });
   }
-}
-
-
+};
 
 // TWO-FACTOR-AUTHENTICATION
 
-const multer = require("multer");
-const { exec } = require("child_process");
-const path = require("path");
-
-const upload = multer({ dest: "uploads/" });
-
 exports.upload2FA = upload.single("image");
 
-exports.verify2FA = [
-  async function (req, res) {
+exports.verify2FA = async function (req, res) {
+  const uploadedFilePath = req.file ? path.resolve(req.file.path) : null;
+
+  try {
+    console.log("REQ USER:", req.user);
     console.log("REQ FILE:", req.file);
-    try {
 
-      const userId = req.user?.userId || req.user?.id;
+    const userId = req.user?.userId || req.user?.id;
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "No image uploaded",
-        });
-      }
-
-      const scriptPath = path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
-      //const scriptPath = process.env.PREDICT_SCRIPT || path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
-      const imagePath = path.resolve(req.file.path);
-      //const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
-
-      console.log("SCRIPT:", scriptPath);
-      console.log("IMAGE:", imagePath);
-
-      exec(
-        //`${PYTHON_BIN} "${scriptPath}" "${imagePath}"`,
-        `python "${scriptPath}" "${imagePath}"`,
-        async (err, stdout, stderr) => {
-
-          console.log("STDOUT:", stdout);
-          console.log("STDERR:", stderr);
-          console.log("ERR:", err);
-
-          if (err) {
-            return res.status(500).json({
-              success: false,
-              message: "Python execution failed",
-              error: stderr || err.message,
-            });
-          }
-
-          const result = JSON.parse(stdout.trim());
-          const verified = result.success && result.accepted;
-
-          // OPTIONAL: če želiš, lahko shraniš stanje userja
-          await User.findByIdAndUpdate(userId, {
-            twoFactorEnabled: verified,
-          });
-
-          return res.json({
-            success: true,
-            verified,
-          });
-        }
-      );
-    } catch (err) {
-      return res.status(500).json({
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: "2FA verification failed",
-        error: err.message,
+        verified: false,
+        message: "Unauthorized - user id missing",
       });
     }
-  },
-];
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        verified: false,
+        message: "No image uploaded",
+      });
+    }
+
+    const scriptPath = process.env.PREDICT_SCRIPT || "/model/predict_image.py";
+    const pythonBin = process.env.PYTHON_BIN || "python";
+    const imagePath = path.resolve(req.file.path);
+
+    console.log("PYTHON:", pythonBin);
+    console.log("SCRIPT:", scriptPath);
+    console.log("IMAGE:", imagePath);
+
+    execFile(
+      pythonBin,
+      [scriptPath, imagePath],
+      function (err, stdout, stderr) {
+        console.log("STDOUT:", stdout);
+        console.log("STDERR:", stderr);
+        console.log("ERR:", err);
+
+        if (uploadedFilePath) {
+          fs.unlink(uploadedFilePath, function (unlinkErr) {
+            if (unlinkErr) {
+              console.log(
+                "Failed to delete uploaded 2FA image:",
+                unlinkErr.message,
+              );
+            }
+          });
+        }
+
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            verified: false,
+            message: "Python execution failed",
+            error: stderr || err.message,
+          });
+        }
+
+        let result;
+
+        try {
+          result = JSON.parse(stdout.trim());
+        } catch (parseErr) {
+          return res.status(500).json({
+            success: false,
+            verified: false,
+            message: "Invalid Python response",
+            rawOutput: stdout,
+          });
+        }
+
+        const verified = result.success === true && result.accepted === true;
+
+        return res.json({
+          success: true,
+          verified,
+          status: result.status,
+          predictedClass: result.predicted_class,
+          probability: result.probability,
+          threshold: result.threshold,
+        });
+      },
+    );
+  } catch (err) {
+    if (uploadedFilePath) {
+      fs.unlink(uploadedFilePath, function (unlinkErr) {
+        if (unlinkErr) {
+          console.log(
+            "Failed to delete uploaded 2FA image:",
+            unlinkErr.message,
+          );
+        }
+      });
+    }
+
+    return res.status(500).json({
+      success: false,
+      verified: false,
+      message: "2FA verification failed",
+      error: err.message,
+    });
+  }
+};
 
 exports.toggle2FA = async function (req, res) {
   try {
@@ -447,7 +476,7 @@ exports.toggle2FA = async function (req, res) {
 
     return res.json({
       success: true,
-      twoFactorEnabled: user.twoFactorEnabled,
+      twoFactorEnabled: user.twoFactorEnabled === true,
     });
   } catch (err) {
     return res.status(500).json({

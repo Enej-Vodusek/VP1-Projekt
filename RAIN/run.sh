@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
+
+CACHE_DIR=".run-cache"
+BUILD_HASH_FILE="$CACHE_DIR/build.sha256" # hash za spremembo
+
+mkdir -p "$CACHE_DIR"
 
 is_private_ip() {
   local ip="$1"
@@ -52,13 +57,62 @@ detect_host_ip() {
   return 1
 }
 
+hash_command() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256
+  else
+    sha256sum
+  fi
+}
+
+calculate_build_hash() {
+  {
+    for file in \
+      "docker-compose.yml" \
+      "OptiMeBackend/Dockerfile" \
+      "OptiMeBackend/package.json" \
+      "OptiMeBackend/package-lock.json" \
+      "OptiMeBackend/model-requirements.txt" \
+      "../ORV/Model/Dockerfile" \
+      "../ORV/Model/requirements.txt"
+    do
+      if [[ -f "$file" ]]; then
+        echo "===== $file ====="
+        cat "$file"
+        echo ""
+      fi
+    done
+  } | hash_command | awk '{print $1}'
+}
+
+image_exists() {
+  local image="$1"
+  docker image inspect "$image" >/dev/null 2>&1
+}
+
+remove_volume_by_suffix() {
+  local suffix="$1"
+
+  docker volume ls --format '{{.Name}}' | grep -E "(^|_)${suffix}$" | while read -r volume_name; do
+    echo "Brišem Docker volume: $volume_name"
+    docker volume rm "$volume_name" >/dev/null 2>&1 || true
+  done
+}
+
+model_exists() {
+  [[ -f "../ORV/Model/models/pencil_classifier.keras" ]] && return 0
+  [[ -f "../ORV/Model/models/best_pencil_model.keras" ]] && return 0
+  [[ -f "../ORV/Model/models/model.keras" ]] && return 0
+
+  return 1
+}
+
 echo "-----=====[!]=====-----"
 echo " OptiMe System Startup"
 echo "-----=====[!]=====-----"
 
 if ! docker info >/dev/null 2>&1; then
   echo "Docker ni zagnan."
-
   echo ""
   echo "Zaženi Docker Desktop in poskusi ponovno."
   exit 1
@@ -80,32 +134,105 @@ echo ""
 echo "HOST_IP = $HOST_IP"
 echo ""
 
-echo "Gradim in zaganjam containerje ..."
-docker compose up --build -d \
+CURRENT_BUILD_HASH="$(calculate_build_hash)"
+PREVIOUS_BUILD_HASH=""
+
+if [[ -f "$BUILD_HASH_FILE" ]]; then
+  PREVIOUS_BUILD_HASH="$(cat "$BUILD_HASH_FILE")"
+fi
+
+NEEDS_BUILD=0
+
+if [[ "${BUILD:-0}" == "1" ]]; then
+  echo "BUILD=1 nastavljen. Prisiljen rebuild z Docker cache."
+  NEEDS_BUILD=1
+fi
+
+if ! image_exists "optime-backend-dev"; then
+  echo "Backend image še ne obstaja."
+  NEEDS_BUILD=1
+fi
+
+if ! image_exists "rain-model"; then
+  echo "Model image še ne obstaja."
+  NEEDS_BUILD=1
+fi
+
+if [[ "$CURRENT_BUILD_HASH" != "$PREVIOUS_BUILD_HASH" ]]; then
+  echo "Zaznana sprememba v relevantnih build datotekah."
+  NEEDS_BUILD=1
+fi
+
+if [[ "${CLEAN:-0}" == "1" ]]; then
+  echo ""
+  echo "CLEAN=1 nastavljen. Brišem stare containerje, image in volume ..."
+  docker compose down --volumes --remove-orphans --rmi local || true
+
+  rm -f "$BUILD_HASH_FILE"
+
+  echo ""
+  echo "Gradim sveže image brez cache-a ..."
+  docker compose build --no-cache \
+    model \
+    backend \
+    mqtt-processor
+
+  echo "$CURRENT_BUILD_HASH" > "$BUILD_HASH_FILE"
+else
+  echo ""
+  echo "Ustavljam stare containerje ..."
+  docker compose down --remove-orphans || true
+
+  if [[ "$NEEDS_BUILD" == "1" ]]; then
+    echo ""
+    echo "Gradim image, ker je to prvi zagon ali so se spremenile relevantne datoteke ..."
+    remove_volume_by_suffix "backend_node_modules"
+
+    docker compose build \
+      model \
+      backend \
+      mqtt-processor
+
+    echo "$CURRENT_BUILD_HASH" > "$BUILD_HASH_FILE"
+  else
+    echo ""
+    echo "Ni relevantnih sprememb. Preskočim Docker build."
+  fi
+fi
+
+echo ""
+echo "Zaganjam containerje ..."
+docker compose up -d \
   mosquitto \
   model \
   backend \
   mqtt-processor
 
 echo ""
-echo "Čakam da se model container inicializira ..."
-sleep 10
+echo "Čakam, da se containerji inicializirajo ..."
+sleep 5
 
-MODEL_FILE="../ORV/Model/models/model.keras"
-
-if [ ! -f "$MODEL_FILE" ]; then
+if [[ "${TRAIN:-0}" == "1" ]]; then
   echo ""
-  echo "Model še ne obstaja."
-  echo "Začenjam train_model.py ..."
-  echo ""
-
+  echo "TRAIN=1 nastavljen. Začenjam ponovni trening modela ..."
   docker compose exec model python train_model.py
-
   echo ""
   echo "Trening modela zaključen."
 else
-  echo ""
-  echo "Model že obstaja."
+  if ! model_exists; then
+    echo ""
+    echo "Model še ne obstaja."
+    echo "Začenjam train_model.py ..."
+    echo ""
+
+    docker compose exec model python train_model.py
+
+    echo ""
+    echo "Trening modela zaključen."
+  else
+    echo ""
+    echo "Model že obstaja. Trening preskočen."
+  fi
 fi
 
 echo ""
@@ -142,6 +269,12 @@ echo "docker compose logs -f"
 echo ""
 echo "Ustavitev:"
 echo "docker compose down"
+
+echo ""
+echo "Dodatni ukazi:"
+echo "BUILD=1 ./run.sh   # rebuild z Docker cache"
+echo "CLEAN=1 ./run.sh   # popoln clean rebuild"
+echo "TRAIN=1 ./run.sh   # ponovno treniranje modela"
 
 echo ""
 echo "Uspešno zaključena skripta."

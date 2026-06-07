@@ -1,6 +1,7 @@
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
+
 import PedometerTracker from "@/components/PedometerTracker";
 import MqttHeartbeatTracker from "@/components/MqttHeartbeatTracker";
 
@@ -14,10 +15,6 @@ function AuthGuard() {
   const router = useRouter();
 
   const [isReady, setIsReady] = useState(false);
-
-  console.log("SEGMENTS:", segments);
-  console.log("USER:", user);
-  console.log("2FA:", user?.twoFactorEnabled);
 
   useEffect(() => {
     setIsReady(true);
@@ -35,51 +32,45 @@ function AuthGuard() {
 
     const hasFinishedForm = user?.formFinished === true;
 
+    // Če ima user login uspešen, ampak mora še narediti 2FA,
+    // ga držimo na /2fa.
     if (pendingUser && !is2FARoute) {
       router.replace("/2fa");
       return;
     }
 
+    // Če ni prijavljen in nima pending 2FA userja, gre na login.
     if (!isAuthenticated && !pendingUser && !isAuthRoute) {
       router.replace("/auth/login");
       return;
     }
 
+    // Če je že prijavljen in gre na auth strani, ga vržemo naprej.
     if (isAuthenticated && isAuthRoute) {
       router.replace(hasFinishedForm ? "/(tabs)/home" : "/user/startingForm");
       return;
     }
 
+    // Če ima izpolnjen starting form, ne sme več na starting form.
     if (isAuthenticated && isUserRoute && hasFinishedForm) {
       router.replace("/(tabs)/home");
       return;
     }
 
+    // Če še nima izpolnjenega starting forma, ne sme na tabs.
     if (isAuthenticated && isTabsRoute && !hasFinishedForm) {
       router.replace("/user/startingForm");
       return;
     }
-
-    /*if (!isAuthenticated && !isAuthRoute) {
-      router.replace("/auth/login");
-      return;
-    }
-
-    if (isAuthenticated && isAuthRoute) {
-      router.replace(hasFinishedForm ? "/(tabs)/home" : "/user/startingForm");
-      return;
-    }
-
-    if (isAuthenticated && isUserRoute && hasFinishedForm) {
-      router.replace("/(tabs)/home");
-      return;
-    }
-
-    if (isAuthenticated && isTabsRoute && !hasFinishedForm) {
-      router.replace("/user/startingForm");
-      return;
-    }*/
-  }, [isReady, authLoading, isAuthenticated, user, segments, router]);
+  }, [
+    isReady,
+    authLoading,
+    isAuthenticated,
+    user,
+    pendingUser,
+    segments,
+    router,
+  ]);
 
   return (
     <Stack
@@ -89,12 +80,7 @@ function AuthGuard() {
         animationDuration: 300,
       }}
     >
-      <Stack.Screen
-        name="auth"
-        options={{
-          animation: Platform.OS === "web" ? "fade" : "slide_from_right",
-        }}
-      />
+      <Stack.Screen name="auth" />
 
       <Stack.Screen
         name="user/startingForm"

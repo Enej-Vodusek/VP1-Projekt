@@ -26,7 +26,7 @@ function normalizeUser(user: any): AuthUserResponse | null {
   if (!user) return null;
 
   return {
-    id: user.id,
+    id: user.id || user._id,
     email: user.email,
     username: user.username,
     formFinished: user.formFinished === true,
@@ -57,15 +57,21 @@ export async function loginUser(email: string, password: string) {
       password,
     });
 
-    const accessToken = response.data?.accessToken;
+    const data = normalizeAuthResponse(response.data);
 
-    if (!accessToken) {
+    if (!data.user) {
+      throw new Error("User data missing from login response");
+    }
+
+    if (data.requires2FA === true || data.user.twoFactorEnabled === true) {
+      return data;
+    }
+
+    if (!data.accessToken) {
       throw new Error("Access token missing from login response");
     }
 
-    //await saveAccessToken(accessToken); // PAZI TUKAJ!
-
-    return normalizeAuthResponse(response.data);
+    return data;
   } catch (error: any) {
     throw new Error(getErrorMessage(error, "Login failed"));
   }

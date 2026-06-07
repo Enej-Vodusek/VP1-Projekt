@@ -16,37 +16,15 @@ export const mainNavigationItems: NavigationItem[] = [
     icon: "home-outline",
   },
   {
-    label: "Stats",
-    href: "/(tabs)/stats",
-    activePath: "/stats",
-    icon: "stats-chart-outline",
-  },
-  {
-    label: "Care",
-    href: "/(tabs)/care",
-    activePath: "/care",
-    icon: "heart-outline",
+    label: "UserSnapshot",
+    href: "/(tabs)/snapshotForm",
+    activePath: "/snapshotForm",
+    icon: "list-outline",
   },
   {
     label: "Profile",
     href: "/(tabs)/profile",
     activePath: "/profile",
     icon: "person-outline",
-  },
-
-  {
-    label: "UserSnapshot",
-    href: "/(tabs)/snapshotForm",
-    activePath: "/snapshotForm",
-    icon: "list-outline",
-  },
-];
-
-export const sidebarBottomNavigationItems: NavigationItem[] = [
-  {
-    label: "Settings",
-    href: "/(tabs)/settings",
-    activePath: "/settings",
-    icon: "settings-outline",
   },
 ];

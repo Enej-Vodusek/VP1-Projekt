@@ -14,9 +14,14 @@ router.post("/startingForm", authMiddleware, controller.saveForm); //middleware 
 router.post("/login", controller.login);
 router.post("/logout", controller.logout);
 
-router.get('/profile', authMiddleware, controller.userProfile);
+router.get("/profile", authMiddleware, controller.userProfile);
 
-router.post("/2fa", authMiddleware, upload.single("image"), controller.verify2FA); //Za Two-Factor-Authentication
+router.post(
+  "/2fa",
+  authMiddleware,
+  upload.single("image"),
+  controller.verify2FA,
+); //Za Two-Factor-Authentication
 router.post("/toggle-2fa", authMiddleware, controller.toggle2FA);
 
 router.post("/test-upload", controller.upload2FA, (req, res) => {

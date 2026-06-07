@@ -1,28 +1,13 @@
-import { publicApi } from "./apiI";
+import api from "./apiI";
 
-export type AuthUserResponse = {
-  id: string;
-  email?: string;
-  username?: string;
-  formFinished: boolean;
+export type UserSnapshotPayload = {
+  mood: number;
+  stress: number;
+  anxiety: number;
+  sleepHours: number;
+  screenTimeHours: number;
+  date?: string;
 };
-
-type AuthResponse = {
-  accessToken?: string;
-  user?: AuthUserResponse;
-  message?: string;
-};
-
-function normalizeUser(user: any): AuthUserResponse | null {
-  if (!user) return null;
-
-  return {
-    id: user.id,
-    email: user.email,
-    username: user.username,
-    formFinished: user.formFinished === true,
-  };
-}
 
 function getErrorMessage(error: any, fallback: string) {
   return (
@@ -33,29 +18,12 @@ function getErrorMessage(error: any, fallback: string) {
   );
 }
 
-function normalizeAuthResponse(data: any): AuthResponse {
-  return {
-    ...data,
-    user: normalizeUser(data?.user),
-  };
-}
-
-
-
-export async function sumbitUserSnapshotForm( mood: Number, stress: Number, anxiety: Number, sleepHours: Number, screenTimeHours: Number)
-{
+export async function submitUserSnapshotForm(payload: UserSnapshotPayload) {
   try {
-    const response = await publicApi.post("/data/submitUserSnapshot", {
-      mood,
-      stress,
-      anxiety,
-      sleepHours,
-      screenTimeHours
-    });
+    const response = await api.post("/data/submitUserSnapshot", payload);
 
-    return normalizeAuthResponse(response.data);
-
+    return response.data;
   } catch (error: any) {
-    throw new Error(getErrorMessage(error, "snapShotSaving Failed"));
+    throw new Error(getErrorMessage(error, "Snapshot saving failed"));
   }
 }
