@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -9,23 +10,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { colors, styles } from "@/styles/home.styles";
 
-import { toggleTwoFactor } from "@/services/auth";
+import { getCurrentUser, toggleTwoFactor } from "@/services/auth";
 
 export default function ProfileScreen() {
   const { width } = useWindowDimensions();
   const isWebLayout = width >= 1000;
 
-  const { logout } = useAuth();
+  const { logout, user, setUser } = useAuth();
   const { showToast, showConfirmToast } = useToast();
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [isUpdatingTwoFactor, setIsUpdatingTwoFactor] = useState(false);
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(
+    user?.twoFactorEnabled === true,
+  );
 
   function blurWebFocus() {
     if (Platform.OS !== "web") return;
@@ -34,22 +38,60 @@ export default function ProfileScreen() {
     activeElement?.blur();
   }
 
+  async function refreshTwoFactorState() {
+    try {
+      const currentUser = await getCurrentUser();
+
+      if (!currentUser) {
+        return;
+      }
+
+      setUser(currentUser);
+      setTwoFactorEnabled(currentUser.twoFactorEnabled === true);
+    } catch (error) {
+      console.log("Failed to refresh profile user:", error);
+    }
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshTwoFactorState();
+    }, []),
+  );
+
   async function handleToggleTwoFactor() {
+    if (isUpdatingTwoFactor) return;
+
     blurWebFocus();
 
-    try {
-      const res = await toggleTwoFactor();
+    const previousValue = twoFactorEnabled;
 
-      setTwoFactorEnabled(res.twoFactorEnabled);
+    try {
+      setIsUpdatingTwoFactor(true);
+
+      const res = await toggleTwoFactor();
+      const nextValue = res.twoFactorEnabled === true;
+
+      setTwoFactorEnabled(nextValue);
+
+      if (user) {
+        setUser({
+          ...user,
+          twoFactorEnabled: nextValue,
+        });
+      }
 
       showToast(
-        res.twoFactorEnabled
+        nextValue
           ? "Two-factor authentication enabled."
           : "Two-factor authentication disabled.",
         "success",
       );
     } catch (error) {
+      setTwoFactorEnabled(previousValue);
       showToast("Failed to update 2FA", "error");
+    } finally {
+      setIsUpdatingTwoFactor(false);
     }
   }
 
@@ -91,6 +133,7 @@ export default function ProfileScreen() {
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
           twoFactorEnabled={twoFactorEnabled}
+          isUpdatingTwoFactor={isUpdatingTwoFactor}
           onToggleTwoFactor={handleToggleTwoFactor}
         />
       </ScrollView>
@@ -108,6 +151,7 @@ export default function ProfileScreen() {
           onLogout={handleLogout}
           isLoggingOut={isLoggingOut}
           twoFactorEnabled={twoFactorEnabled}
+          isUpdatingTwoFactor={isUpdatingTwoFactor}
           onToggleTwoFactor={handleToggleTwoFactor}
         />
       </ScrollView>
@@ -120,12 +164,14 @@ function ProfileContent({
   onLogout,
   isLoggingOut,
   twoFactorEnabled,
+  isUpdatingTwoFactor,
   onToggleTwoFactor,
 }: {
   mobile?: boolean;
   onLogout: () => void;
   isLoggingOut: boolean;
   twoFactorEnabled: boolean;
+  isUpdatingTwoFactor: boolean;
   onToggleTwoFactor: () => void;
 }) {
   return (
@@ -173,19 +219,25 @@ function ProfileContent({
       >
         <Pressable
           onPress={onToggleTwoFactor}
+          disabled={isUpdatingTwoFactor}
           accessibilityRole="checkbox"
           accessibilityState={{ checked: twoFactorEnabled }}
           style={{
             flexDirection: "row",
             alignItems: "center",
             gap: 12,
+            opacity: isUpdatingTwoFactor ? 0.65 : 1,
           }}
         >
-          <Ionicons
-            name={twoFactorEnabled ? "checkbox-outline" : "square-outline"}
-            size={26}
-            color={twoFactorEnabled ? colors.navy : colors.textSoft}
-          />
+          {isUpdatingTwoFactor ? (
+            <ActivityIndicator size="small" color={colors.navy} />
+          ) : (
+            <Ionicons
+              name={twoFactorEnabled ? "checkbox-outline" : "square-outline"}
+              size={26}
+              color={twoFactorEnabled ? colors.navy : colors.textSoft}
+            />
+          )}
 
           <View style={{ flex: 1 }}>
             <Text
@@ -207,7 +259,9 @@ function ProfileContent({
                 lineHeight: 18,
               }}
             >
-              Require two-factor verification after login.
+              {twoFactorEnabled
+                ? "Two-factor verification is currently enabled."
+                : "Require two-factor verification after login."}
             </Text>
           </View>
 

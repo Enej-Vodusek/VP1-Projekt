@@ -28,10 +28,7 @@ export default function TabsLayout() {
             }}
           >
             <Stack.Screen name="home" />
-            <Stack.Screen name="stats" />
-            <Stack.Screen name="care" />
             <Stack.Screen name="profile" />
-            <Stack.Screen name="settings" />
             <Stack.Screen name="snapshot" />
           </Stack>
         </View>
@@ -52,10 +49,7 @@ export default function TabsLayout() {
         }}
       >
         <Stack.Screen name="home" />
-        <Stack.Screen name="stats" />
-        <Stack.Screen name="care" />
         <Stack.Screen name="profile" />
-        <Stack.Screen name="settings" />
         <Stack.Screen name="snapshot" />
       </Stack>
 

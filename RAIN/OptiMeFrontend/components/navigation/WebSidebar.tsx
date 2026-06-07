@@ -15,7 +15,6 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import {
   mainNavigationItems,
-  sidebarBottomNavigationItems,
   type NavigationItem,
 } from "@/constants/navigationItems";
 
@@ -108,19 +107,6 @@ export default function WebSidebar() {
       </View>
 
       <View style={styles.bottom}>
-        {sidebarBottomNavigationItems.map((item) => {
-          const active = isRouteActive(pathname, item.activePath);
-
-          return (
-            <SidebarNavItem
-              key={`${item.label}-${item.activePath}`}
-              item={item}
-              active={active}
-              onPress={() => navigateTo(item.href)}
-            />
-          );
-        })}
-
         <Pressable
           onPress={handleLogout}
           disabled={isLoggingOut}
