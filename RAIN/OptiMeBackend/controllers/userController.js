@@ -135,6 +135,7 @@ exports.login = async function (req, res) {
       accessToken,
       refreshToken,
       success: true,
+      requires2FA: user.twoFactorEnabled,
       message: "User login successful",
       user: {
         id: user._id,
@@ -149,6 +150,7 @@ exports.login = async function (req, res) {
         phoneScreenTime: user.phoneScreenTime,
         stress: user.stress,
         formFinished: user.formFinished,
+        twoFactorEnabled: user.twoFactorEnabled, //tukaj sem dodal 2fa
       },
     });
   } catch (err) {
@@ -350,3 +352,107 @@ exports.userProfile = async function (req, res) {
     });
   }
 }
+
+
+
+// TWO-FACTOR-AUTHENTICATION
+
+const multer = require("multer");
+const { exec } = require("child_process");
+const path = require("path");
+
+const upload = multer({ dest: "uploads/" });
+
+exports.upload2FA = upload.single("image");
+
+exports.verify2FA = [
+  async function (req, res) {
+    console.log("REQ FILE:", req.file);
+    try {
+
+      const userId = req.user?.userId || req.user?.id;
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "No image uploaded",
+        });
+      }
+
+      const scriptPath = path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
+      //const scriptPath = process.env.PREDICT_SCRIPT || path.resolve(__dirname, "../../../ORV/Model/predict_image.py");
+      const imagePath = path.resolve(req.file.path);
+      //const PYTHON_BIN = process.env.PYTHON_BIN || "python3";
+
+      console.log("SCRIPT:", scriptPath);
+      console.log("IMAGE:", imagePath);
+
+      exec(
+        //`${PYTHON_BIN} "${scriptPath}" "${imagePath}"`,
+        `python "${scriptPath}" "${imagePath}"`,
+        async (err, stdout, stderr) => {
+
+          console.log("STDOUT:", stdout);
+          console.log("STDERR:", stderr);
+          console.log("ERR:", err);
+
+          if (err) {
+            return res.status(500).json({
+              success: false,
+              message: "Python execution failed",
+              error: stderr || err.message,
+            });
+          }
+
+          const result = JSON.parse(stdout.trim());
+          const verified = result.success && result.accepted;
+
+          // OPTIONAL: če želiš, lahko shraniš stanje userja
+          await User.findByIdAndUpdate(userId, {
+            twoFactorEnabled: verified,
+          });
+
+          return res.json({
+            success: true,
+            verified,
+          });
+        }
+      );
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        message: "2FA verification failed",
+        error: err.message,
+      });
+    }
+  },
+];
+
+exports.toggle2FA = async function (req, res) {
+  try {
+    const userId = req.user.userId || req.user.id;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    user.twoFactorEnabled = !user.twoFactorEnabled;
+
+    await user.save();
+
+    return res.json({
+      success: true,
+      twoFactorEnabled: user.twoFactorEnabled,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: "Failed to toggle 2FA",
+    });
+  }
+};

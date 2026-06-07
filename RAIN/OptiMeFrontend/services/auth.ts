@@ -12,12 +12,14 @@ export type AuthUserResponse = {
   email?: string;
   username?: string;
   formFinished: boolean;
+  twoFactorEnabled?: boolean;
 };
 
 type AuthResponse = {
   accessToken?: string;
   user?: AuthUserResponse;
   message?: string;
+  requires2FA?: boolean;
 };
 
 function normalizeUser(user: any): AuthUserResponse | null {
@@ -28,6 +30,7 @@ function normalizeUser(user: any): AuthUserResponse | null {
     email: user.email,
     username: user.username,
     formFinished: user.formFinished === true,
+    twoFactorEnabled: user.twoFactorEnabled === true,
   };
 }
 
@@ -60,7 +63,7 @@ export async function loginUser(email: string, password: string) {
       throw new Error("Access token missing from login response");
     }
 
-    await saveAccessToken(accessToken);
+    //await saveAccessToken(accessToken); // PAZI TUKAJ!
 
     return normalizeAuthResponse(response.data);
   } catch (error: any) {
@@ -131,5 +134,15 @@ export async function getCurrentUser() {
     }
 
     throw new Error(getErrorMessage(error, "Failed to get current user"));
+  }
+}
+
+export async function toggleTwoFactor() {
+  try {
+    const response = await api.post("/user/toggle-2fa");
+
+    return response.data;
+  } catch (error: any) {
+    throw new Error(getErrorMessage(error, "Toggle 2FA failed"));
   }
 }
