@@ -6,7 +6,7 @@ ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT_DIR"
 
 CACHE_DIR=".run-cache"
-BUILD_HASH_FILE="$CACHE_DIR/build.sha256"
+BUILD_HASH_FILE="$CACHE_DIR/build.sha256" # hash za spremembo
 
 mkdir -p "$CACHE_DIR"
 
@@ -186,10 +186,6 @@ else
   if [[ "$NEEDS_BUILD" == "1" ]]; then
     echo ""
     echo "Gradim image, ker je to prvi zagon ali so se spremenile relevantne datoteke ..."
-
-    # Pomembno pri backend dependencyjih:
-    # če se package.json/package-lock/Dockerfile spremeni, mora node_modules volume stran,
-    # drugače Docker lahko še vedno uporablja stare dependencyje.
     remove_volume_by_suffix "backend_node_modules"
 
     docker compose build \
