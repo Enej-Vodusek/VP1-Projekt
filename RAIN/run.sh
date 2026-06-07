@@ -52,10 +52,15 @@ detect_host_ip() {
   return 1
 }
 
+echo "-----=====[!]=====-----"
+echo " OptiMe System Startup"
+echo "-----=====[!]=====-----"
+
 if ! docker info >/dev/null 2>&1; then
   echo "Docker ni zagnan."
-  echo "Na Macu zaženi:"
-  echo "open -a Docker"
+
+  echo ""
+  echo "Zaženi Docker Desktop in poskusi ponovno."
   exit 1
 fi
 
@@ -63,34 +68,80 @@ HOST_IP="$(detect_host_ip)"
 
 if [[ "$HOST_IP" == "ERROR" || -z "$HOST_IP" ]]; then
   echo "Ni bilo mogoče zaznati lokalnega IP naslova."
-  echo "Lahko ga podaš ročno:"
+  echo ""
+  echo "Zaženi:"
   echo "HOST_IP=192.168.x.x ./run.sh"
   exit 1
 fi
 
 export HOST_IP
 
-echo "Uporabljen HOST_IP: $HOST_IP"
-echo "Backend API: http://$HOST_IP:3000"
-echo "MQTT WebSocket: ws://$HOST_IP:9001"
+echo ""
+echo "HOST_IP = $HOST_IP"
 echo ""
 
-docker compose up --build -d mosquitto backend mqtt-processor
+echo "Gradim in zaganjam containerje ..."
+docker compose up --build -d \
+  mosquitto \
+  model \
+  backend \
+  mqtt-processor
 
 echo ""
-echo "Vsi containerji so zagnani."
+echo "Čakam da se model container inicializira ..."
+sleep 10
+
+MODEL_FILE="../ORV/Model/models/model.keras"
+
+if [ ! -f "$MODEL_FILE" ]; then
+  echo ""
+  echo "Model še ne obstaja."
+  echo "Začenjam train_model.py ..."
+  echo ""
+
+  docker compose exec model python train_model.py
+
+  echo ""
+  echo "Trening modela zaključen."
+else
+  echo ""
+  echo "Model že obstaja."
+fi
+
 echo ""
-echo "Stanje:"
+echo "-----=====[!]=====-----"
+echo "VSI SERVISI SO ZAGNANI"
+echo "-----=====[!]=====-----"
+echo ""
+
 docker compose ps
 
 echo ""
-echo "Zdaj v drugem terminalu zaženi frontend lokalno:"
-echo "cd ./OptiMeFrontend"
+echo "Backend API:"
+echo "http://$HOST_IP:3000"
+
+echo ""
+echo "MQTT:"
+echo "mqtt://$HOST_IP:1883"
+
+echo ""
+echo "MQTT WebSocket:"
+echo "ws://$HOST_IP:9001"
+
+echo ""
+echo "Frontend zaženi lokalno:"
+echo ""
+echo "cd OptiMeFrontend"
+echo "npm install"
 echo "npm start"
 echo ""
-echo "Za spremljanje logov:"
+
+echo "Logi:"
 echo "docker compose logs -f"
+
 echo ""
-echo "Za ustavitev:"
+echo "Ustavitev:"
 echo "docker compose down"
-echo "Uspešno zaključena skripta"
+
+echo ""
+echo "Uspešno zaključena skripta."

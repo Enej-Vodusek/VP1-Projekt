@@ -21,6 +21,8 @@ services:
     ports:
       - "3000:3000"
     environment:
+      PYTHON_BIN: python
+      PREDICT_SCRIPT: /model/predict_image.py
       NODE_ENV: development
       PORT: 3000
       MQTT_URL: mqtt://mosquitto:1883
@@ -28,9 +30,19 @@ services:
       MQTT_PORT: 1883
     volumes:
       - ./OptiMeBackend:/app
+      - ../ORV/Model:/model
       - backend_node_modules:/app/node_modules
     depends_on:
       - mosquitto
+
+  model:
+    build:
+      context: ../ORV/Model
+    container_name: optime-model
+    restart: unless-stopped
+    volumes:
+      - ../ORV/Model:/model
+    working_dir: /model
 
   mqtt-processor:
     build:
