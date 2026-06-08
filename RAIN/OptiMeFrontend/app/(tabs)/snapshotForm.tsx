@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Image,
   Keyboard,
@@ -19,6 +19,18 @@ import AuthButton from "@/components/AuthButton";
 
 import { useToast } from "@/context/ToastContext";
 import { submitUserSnapshotForm } from "@/services/user";
+
+function DismissKeyboardWrapper({ children }: { children: ReactNode }) {
+  if (Platform.OS === "web") {
+    return <>{children}</>;
+  }
+
+  return (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      {children}
+    </TouchableWithoutFeedback>
+  );
+}
 
 export default function UserSnapshotFormScreen() {
   const [mood, setMood] = useState("");
@@ -79,16 +91,13 @@ export default function UserSnapshotFormScreen() {
       return;
     }
 
-    /*
-      Backend/dashboard uporablja mood, stress in anxiety kot 1–5 skalo.
-      Zato tukaj validiramo 1–5, ne 0–10.
-    */
     if (!validateRange(moodValue, 1, 5, "Mood")) return;
     if (!validateRange(stressValue, 1, 5, "Stress")) return;
     if (!validateRange(anxietyValue, 1, 5, "Anxiety")) return;
     if (!validateRange(sleepHoursValue, 0, 24, "Sleep hours")) return;
-    if (!validateRange(screenTimeHoursValue, 0, 24, "Screen time hours"))
+    if (!validateRange(screenTimeHoursValue, 0, 24, "Screen time hours")) {
       return;
+    }
 
     try {
       setLoading(true);
@@ -121,7 +130,7 @@ export default function UserSnapshotFormScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <DismissKeyboardWrapper>
           <ScrollView
             style={localStyles.scroll}
             contentContainerStyle={[
@@ -203,7 +212,7 @@ export default function UserSnapshotFormScreen() {
               </View>
             </View>
           </ScrollView>
-        </TouchableWithoutFeedback>
+        </DismissKeyboardWrapper>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
